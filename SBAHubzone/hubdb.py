@@ -2,6 +2,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from .models.batch import Batch
 
 load_dotenv()
 
@@ -49,3 +50,11 @@ class HubDB:
         with self.conn:
             with self.conn.cursor() as curs:
                 curs.execute(stmt)
+
+    def get_batch_of_businesses(self, limit=1000, offset=0) -> Batch:
+        batch = Batch(limit=limit, offset=offset)
+        stmt = """select bus_name, url, uei from businesses b limit %s offset %s"""
+        with self.conn.cursor() as curs:
+            curs.execute(stmt, (limit, offset))
+            batch.recs = curs.fetchall()
+        return batch

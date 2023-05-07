@@ -51,9 +51,9 @@ DOWNLOAD_DELAY = 3
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    "SBAHubzone.middlewares.SbahubzoneDownloaderMiddleware": 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+   "SBAHubzone.middlewares.SbahubzoneDownloaderMiddleware": 543,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
