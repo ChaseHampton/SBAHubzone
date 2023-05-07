@@ -6,7 +6,7 @@ from ..models.batch import Batch
 
 class SbahubSpider(scrapy.Spider):
     name = "SBAHub"
-    allowed_domains = ["dsbs.sba.gov"]
+    allowed_domains = ["dsbs.sba.gov", "batchsearch.bs"]
     start_urls = ["https://dsbs.sba.gov/"]
 
     def __init__(self, reset=False, name=None, **kwargs):
@@ -29,9 +29,9 @@ class SbahubSpider(scrapy.Spider):
                 callback=self.collect_businesses
             )
             yield request
-        batch = self.db.get_batch_of_businesses()
+        batch = self.db.get_batch_of_businesses(limit=10)
         if batch.recs:
-            yield scrapy.Request(url='http://BatchSearch.bs', meta={'batch': batch}, callback=self.dispatch_batch_searches)
+            yield scrapy.Request(url='https://dsbs.sba.gov/search/dsp_dsbs.cfm', dont_filter=True, callback=self.dispatch_batch_searches, cb_kwargs={'batch': batch})
                 
 
     def collect_businesses(self, response):
@@ -45,12 +45,38 @@ class SbahubSpider(scrapy.Spider):
         self.db.update_search_is_searched(response.meta['search'])
 
 
-    def dispatch_batch_searches(self, response):
-        for business in response.meta['batch'].recs:
-            yield scrapy.Request(url=response.urljoin(business['url']), meta=response.meta, callback=self.parse_business_page)
-        batch = self.db.get_batch_of_businesses(response.meta['batch'].limit, response.meta['batch'].offset)
+    def dispatch_batch_searches(self, response, batch):
+        for business in batch.recs:
+            if business['uei']:
+                yield scrapy.FormRequest.from_response(
+                    response,
+                    method="POST",
+                    formname="SearchForm",
+                    dont_click=True,
+                    formdata={'UEI': business['uei'], 'State': ''},
+                    callback=self.search_results_page,
+                    cb_kwargs={'business': business}
+                )
+            else:
+                yield scrapy.FormRequest.from_response(
+                    response,
+                    method="POST",
+                    formname="SearchForm",
+                    dont_click=True,
+                    formdata={'CompanyName': business['bus_name'], 'State': ''},
+                    callback=self.search_results_page,
+                    cb_kwargs={'business': business}
+                )
+        batch = self.db.get_batch_of_businesses(batch.limit, batch.offset + batch.limit)
         if batch:
-            yield scrapy.Request('http://BatchSearch.bs', meta={'batch': batch}, callback=self.dispatch_batch_searches)
+            yield scrapy.Request('https://dsbs.sba.gov/search/dsp_dsbs.cfm', callback=self.dispatch_batch_searches, dont_filter=True, cb_kwargs={'batch': batch})
 
-    def parse_business_page(self, response):
+    def search_results_page(self, response, business:dict):
+        bus_link = response.css('td a::attr(href)').get()
+        if bus_link:
+            yield scrapy.Request(response.urljoin(bus_link), callback=self.parse_business_page, cb_kwargs={'business': business})
+
+    def parse_business_page(self, response, business:dict):
+        html = response.text
+        self.db.insert_html(html, business)
         return

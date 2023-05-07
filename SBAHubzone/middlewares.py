@@ -4,7 +4,7 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
-from scrapy.responsetypes import Response
+from scrapy.http import TextResponse, Response
 
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
@@ -79,8 +79,10 @@ class SbahubzoneDownloaderMiddleware:
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
-        if request.url == 'http://BatchSearch.bs':
-            return Response(url='https://dsbs.sba.gov/search', request=request)
+        if request.url == 'http://batchsearch.bs':
+            resp = Response(url='https://dsbs.sba.gov/search', request=request)
+            # resp.meta = request.meta
+            return resp
         return None
 
     def process_response(self, request, response, spider):

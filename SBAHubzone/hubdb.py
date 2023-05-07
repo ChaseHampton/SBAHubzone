@@ -53,8 +53,20 @@ class HubDB:
 
     def get_batch_of_businesses(self, limit=1000, offset=0) -> Batch:
         batch = Batch(limit=limit, offset=offset)
-        stmt = """select bus_name, url, uei from businesses b limit %s offset %s"""
+        stmt = """select businesses_id, bus_name, url, uei from businesses b limit %s offset %s"""
         with self.conn.cursor() as curs:
             curs.execute(stmt, (limit, offset))
             batch.recs = curs.fetchall()
         return batch
+    
+    def insert_html(self, html:bytes, business:dict):
+        stmt = """insert into business_pages (html, businesses_id) values (%s, %s)"""
+        with self.conn:
+            with self.conn.cursor() as curs:
+                curs.execute(stmt, (html, business['businesses_id']))
+        self.update_business_is_searched(business)
+
+    def update_business_is_searched(self, business:dict):
+        stmt = """CALL update_business_is_searched(%s);"""
+        with self.conn.cursor() as curs:
+            curs.execute(stmt, (business['businesses_id'],))
