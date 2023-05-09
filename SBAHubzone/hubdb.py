@@ -1,7 +1,9 @@
 import os
+
 import psycopg2
-from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from psycopg2.extras import RealDictCursor
+
 from .models.batch import Batch
 
 load_dotenv()
@@ -14,7 +16,7 @@ class HubDB:
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASS"),
             database=os.getenv("DB_DB"),
-            cursor_factory=RealDictCursor
+            cursor_factory=RealDictCursor,
         )
 
     def get_one_search(self):
@@ -29,10 +31,10 @@ class HubDB:
             curs.execute(stmt)
             return curs.fetchall()
 
-    def update_search_is_searched(self, search:dict):
+    def update_search_is_searched(self, search: dict):
         stmt = "CALL update_search_is_searched(%s)"
         with self.conn.cursor() as curs:
-            curs.execute(stmt, (search['search_id'],))
+            curs.execute(stmt, (search["search_id"],))
 
     def reset_search_is_searched(self):
         stmt = "CALL reset_search_is_searched()"
@@ -40,7 +42,9 @@ class HubDB:
             curs.execute(stmt)
 
     def insert_businesses(self, business: list):
-        stmt = """INSERT INTO public.businesses (bus_name, url, uei) VALUES(%s, %s, %s);"""
+        stmt = (
+            """INSERT INTO public.businesses (bus_name, url, uei) VALUES(%s, %s, %s);"""
+        )
         with self.conn:
             with self.conn.cursor() as curs:
                 curs.executemany(stmt, business)
@@ -58,15 +62,15 @@ class HubDB:
             curs.execute(stmt, (limit, offset))
             batch.recs = curs.fetchall()
         return batch
-    
-    def insert_html(self, html:bytes, business:dict):
+
+    def insert_html(self, html: bytes, business: dict):
         stmt = """insert into business_pages (html, businesses_id) values (%s, %s)"""
         with self.conn:
             with self.conn.cursor() as curs:
-                curs.execute(stmt, (html, business['businesses_id']))
+                curs.execute(stmt, (html, business["businesses_id"]))
         self.update_business_is_searched(business)
 
-    def update_business_is_searched(self, business:dict):
+    def update_business_is_searched(self, business: dict):
         stmt = """CALL update_business_is_searched(%s);"""
         with self.conn.cursor() as curs:
-            curs.execute(stmt, (business['businesses_id'],))
+            curs.execute(stmt, (business["businesses_id"],))
